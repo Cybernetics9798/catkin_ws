@@ -101,12 +101,16 @@ class OccupancyGridMap:
     #     self.map_occ_grid_msg.header.stamp = rospy.Time.now()
     #     self.map_pub.publish(self.map_occ_grid_msg)
 
+    rospy.loginfo_once("Lidar callback called")
+
     #Update vehicle position
     # def odom_callback(self, odom_msg):
     #     self.x_base = odom_msg.pose.pose.position.x
     #     self.y_base = odom_msg.pose.pose.position.y
     #     orientation_z = odom_msg.pose.pose.orientation.z
     #     self.base_yaw = 2.0 * math.asin(orientation_z) #z = sin(yaw/2)
+
+    rospy.loginfo_once("Odom callback called")
 
     # def map_p(self, n):
     #     if (n > self.pOcc):
