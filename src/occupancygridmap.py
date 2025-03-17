@@ -68,53 +68,55 @@ class OccupancyGridMap:
 
      # lidar_callback () uses the current LiDAR scan and Wheel Odometry data to uddate and publish the Grid Occupancy map
     def lidar_callback(self, data):
-    #     #Create list of LIDAR angles
-    #     num_angles = len(data.ranges)
-    #     step_size = (data.angle_max - data.angle_min)/(num_angles - 1)
-    #     angles = [data.angle_min + i*step_size for i in range(num_angles)]
-
-    #     #assign values to cells in grid
-    #     for i in range(self.width):
-    #         for j in range(self.height):
-    #             #Get coordinates & angle from i, j
-    #             x = i*self.res
-    #             y = j*self.res
-    #             angle = math.atan2(y - self.y_base, x - self.x_base) - self.base_yaw
-
-    #             #Get distance to cell
-    #             cell_distance = math.sqrt((x - self.x_base)**2 + (y - self.y_base)**2)
-
-    #             #get closest LIDAR beam to cell and its associated distance
-    #             closest_measurement = min(enumerate(angles), key=lambda x: abs(x[1] - angle))[0]
-    #             measurement_distance = data.ranges[closest_measurement]
-
-    #             if cell_distance < measurement_distance:
-    #                 #cell is free
-    #                 self.log_p[i*self.width + j] += math.log(self.pFree/(1-self.pFree))
-    #             elif abs(cell_distance - measurement_distance) < self.res:
-    #                 #cell is occupied
-    #                 self.log_p[i*self.width + j] += math.log(self.pOcc/(1-self.pOcc))
-
-    #     #use log_p map to update published map
-    #     #P > POcc -> 100
-    #     #P < PFree -> 0
-    #     # -1 otherwise
-    #     self.map_occ_grid_msg.data = [self.map_p(x) for x in self.log_p]
-
-    #     # Publish to map topic
-    #     self.map_occ_grid_msg.header.stamp = rospy.Time.now()
-    #     self.map_pub.publish(self.map_occ_grid_msg)
         rospy.loginfo_once("Lidar callback called")
+        #Create list of LIDAR angles
+        num_angles = len(data.ranges)
+        step_size = (data.angle_max - data.angle_min)/(num_angles - 1)
+        angles = [data.angle_min + i*step_size for i in range(num_angles)]
+
+        #assign values to cells in grid
+        for i in range(self.width):
+            for j in range(self.height):
+                #Get coordinates & angle from i, j
+                x = i*self.res
+                y = j*self.res
+                angle = math.atan2(y - self.y_base, x - self.x_base) - self.base_yaw
+
+                #Get distance to cell
+                cell_distance = math.sqrt((x - self.x_base)**2 + (y - self.y_base)**2)
+
+                #get closest LIDAR beam to cell and its associated distance
+                closest_measurement = min(enumerate(angles), key=lambda x: abs(x[1] - angle))[0]
+                measurement_distance = data.ranges[closest_measurement]
+
+                if cell_distance < measurement_distance:
+                    #cell is free
+                    self.log_p[i*self.width + j] += math.log(self.pFree/(1-self.pFree))
+                elif abs(cell_distance - measurement_distance) < self.res:
+                    #cell is occupied
+                    self.log_p[i*self.width + j] += math.log(self.pOcc/(1-self.pOcc))
+
+        #use log_p map to update published map
+        #P > POcc -> 100
+        #P < PFree -> 0
+        # -1 otherwise
+        self.map_occ_grid_msg.data = [self.map_p(x) for x in self.log_p]
+
+        # Publish to map topic
+        self.map_occ_grid_msg.header.stamp = rospy.Time.now()
+        self.map_pub.publish(self.map_occ_grid_msg)
+
 
     
 
     #Update vehicle position
     def odom_callback(self, odom_msg):
-    #     self.x_base = odom_msg.pose.pose.position.x
-    #     self.y_base = odom_msg.pose.pose.position.y
-    #     orientation_z = odom_msg.pose.pose.orientation.z
-    #     self.base_yaw = 2.0 * math.asin(orientation_z) #z = sin(yaw/2)
         rospy.loginfo_once("Odom callback called")
+        self.x_base = odom_msg.pose.pose.position.x
+        self.y_base = odom_msg.pose.pose.position.y
+        orientation_z = odom_msg.pose.pose.orientation.z
+        self.base_yaw = 2.0 * math.asin(orientation_z) #z = sin(yaw/2)
+
 
     
 
