@@ -52,10 +52,8 @@ class OccupancyGridMap:
         self.map_occ_grid_msg.info.origin.orientation.z = 0.0
         self.map_occ_grid_msg.info.origin.orientation.w = 1.0
 
-        # Initialize the cell occuopancy probabilites to 0
-        #Log(0.5/(1-0.5)) = 0
-        for i in range(self.width * self.height):
-            self.map_occ_grid_msg.data[i] = 0
+        #internal map with log probability
+        self.log_p = [0 for i in range(self.width * self.height)]
 
         # Subscribe to Lidar scan and odomery topics with corresponding lidar_callback() and odometry_callback() functions
         lidar_sub = rospy.Subscriber(lidarscan_topic, LaserScan, self.lidar_callback)
@@ -88,13 +86,16 @@ class OccupancyGridMap:
 
                 if cell_distance < measurement_distance:
                     #cell is free
-                    self.map_occ_grid_msg.data[i*self.width + j] += math.log(self.pFree/(1-self.pFree))
+                    self.log_p[i*self.width + j] += math.log(self.pFree/(1-self.pFree))
                 elif abs(cell_distance - measurement_distance) < self.res:
                     #cell is occupied
-                    self.map_occ_grid_msg.data[i*self.width + j] += math.log(self.pOcc/(1-self.pOcc))
-                else:
-                    #cell is unknown
-                    #DO nothing & remove branch??
+                    self.log_p[i*self.width + j] += math.log(self.pOcc/(1-self.pOcc))
+
+        #use log_p map to update published map
+        #P > POcc -> 100
+        #P < PFree -> 0
+        # -1 otherwise
+        self.map_occ_grid_msg.data = [self.map_p(x) for x in self.log_p]
 
         # Publish to map topic
         self.map_occ_grid_msg.header.stamp = rospy.Time.now()
@@ -107,6 +108,13 @@ class OccupancyGridMap:
         orientation_z = odom_msg.pose.pose.orientation.z
         self.base_yaw = 2.0 * math.asin(orientation_z) #z = sin(yaw/2)
 
+    def map_p(self, n):
+        if (n > self.pOcc):
+            return 100
+        elif (n < self.pFree):
+            return 0
+        else:
+            return -1
 
 def main(args):
     rospy.init_node("occupancygridmap", anonymous=True)
