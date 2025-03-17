@@ -62,8 +62,12 @@ class OccupancyGridMap:
         # Create a publisher for the Occupancy Grid Map
         map_pub = rospy.Publisher("/map", OccupancyGrid, queue_size=1)
 
-    # # lidar_callback () uses the current LiDAR scan and Wheel Odometry data to uddate and publish the Grid Occupancy map
-    # def lidar_callback(self, data):
+        self.y_base = 0
+        self.x_base = 0 
+        self.base_yaw = 0
+
+     # lidar_callback () uses the current LiDAR scan and Wheel Odometry data to uddate and publish the Grid Occupancy map
+    def lidar_callback(self, data):
     #     #Create list of LIDAR angles
     #     num_angles = len(data.ranges)
     #     step_size = (data.angle_max - data.angle_min)/(num_angles - 1)
@@ -100,17 +104,19 @@ class OccupancyGridMap:
     #     # Publish to map topic
     #     self.map_occ_grid_msg.header.stamp = rospy.Time.now()
     #     self.map_pub.publish(self.map_occ_grid_msg)
+        rospy.loginfo_once("Lidar callback called")
 
-    rospy.loginfo_once("Lidar callback called")
+    
 
     #Update vehicle position
-    # def odom_callback(self, odom_msg):
+    def odom_callback(self, odom_msg):
     #     self.x_base = odom_msg.pose.pose.position.x
     #     self.y_base = odom_msg.pose.pose.position.y
     #     orientation_z = odom_msg.pose.pose.orientation.z
     #     self.base_yaw = 2.0 * math.asin(orientation_z) #z = sin(yaw/2)
+        rospy.loginfo_once("Odom callback called")
 
-    rospy.loginfo_once("Odom callback called")
+    
 
     # def map_p(self, n):
     #     if (n > self.pOcc):
