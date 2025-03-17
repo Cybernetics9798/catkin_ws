@@ -91,7 +91,7 @@ class OccupancyGridMap:
                     self.map_occ_grid_msg.data[i*self.width + j] += math.log(self.pFree/(1-self.pFree))
                 elif abs(cell_distance - measurement_distance) < self.res:
                     #cell is occupied
-                    self.map_occ_grid_msg.data[i*self.width + j] += math.log(self.pOcc/(1-self.pFree))
+                    self.map_occ_grid_msg.data[i*self.width + j] += math.log(self.pOcc/(1-self.pOcc))
                 else:
                     #cell is unknown
                     #DO nothing & remove branch??
