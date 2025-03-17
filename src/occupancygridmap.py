@@ -18,7 +18,7 @@ class OccupancyGridMap:
         # Topics & Subs, Pubs
         # Read paramters form params.yaml
         lidarscan_topic = rospy.get_param('~scan_topic')
-        odom_topic = "/odom_imu"
+        odom_topic = rospy.get_param('~odom_topic')
 
         self.t_prev = rospy.get_time()
         self.max_lidar_range = rospy.get_param('~scan_range')
