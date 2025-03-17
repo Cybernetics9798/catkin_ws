@@ -8,7 +8,6 @@ import rospy
 import tf2_ros
 import math
 
-
 from sensor_msgs.msg import LaserScan
 from nav_msgs.msg import Odometry, OccupancyGrid
 from ackermann_msgs.msg import AckermannDriveStamped, AckermannDrive
@@ -21,28 +20,28 @@ class OccupancyGridMap:
         lidarscan_topic = rospy.get_param('~scan_topic')
         odom_topic = "/odom_imu"
 
-        self.t_prev=rospy.get_time()
-        self.max_lidar_range=rospy.get_param('~scan_range')
-        self.scan_beams=rospy.get_param('~scan_beams')
-        
+        self.t_prev = rospy.get_time()
+        self.max_lidar_range = rospy.get_param('~scan_range')
+        self.scan_beams = rospy.get_param('~scan_beams')
+
         # Read the map parameters from *.yaml file
-        mapTopic = rospy.get_param('~occ_map_topic')
-        pOcc = rospy.get_param('~p_occ')
-        pFree = rospy.get_param('~p_free')
-        width = rospy.get_param('~map_width')
-        height = rospy.get_param('~map_height')
-        res = rospy.get_param('~map_res')
-        size = rospy.get_param('~object_size')
-        
+        self.mapTopic = rospy.get_param('~occ_map_topic')
+        self.pOcc = rospy.get_param('~p_occ')
+        self.pFree = rospy.get_param('~p_free')
+        self.width = rospy.get_param('~map_width')
+        self.height = rospy.get_param('~map_height')
+        self.res = rospy.get_param('~map_res')
+        self.size = rospy.get_param('~object_size')
+
         self.map_occ_grid_msg = OccupancyGrid()
 
         # Initialize the map meta info in the Occupancy Grid Message, e.g., frame_id, stamp, resolution, width, height, etc.
-        self.map_occ_grid_msg.header.frame_id = mapTopic
+        self.map_occ_grid_msg.header.frame_id = self.mapTopic
         self.map_occ_grid_msg.header.stamp = rospy.Time.now()
 
-        self.map_occ_grid_msg.info.resolution = res
-        self.map_occ_grid_msg.info.width = width
-        self.map_occ_grid_msg.info.height = height
+        self.map_occ_grid_msg.info.resolution = self.res
+        self.map_occ_grid_msg.info.width = self.width
+        self.map_occ_grid_msg.info.height = self.height
 
         self.map_occ_grid_msg.info.origin.position.x = 0.0
         self.map_occ_grid_msg.info.origin.position.y = 0.0
@@ -53,32 +52,61 @@ class OccupancyGridMap:
         self.map_occ_grid_msg.info.origin.orientation.z = 0.0
         self.map_occ_grid_msg.info.origin.orientation.w = 1.0
 
-        # Initialize the cell occuopancy probabilites to 0.5 (unknown) with all cell data in Occupancy Grid Message set to unknown 
-        for i in range(width*height):
-            self.map_occ_grid_msg.data[i] = 0.5
-    
-        # Subscribe to Lidar scan and odomery topics with corresponding lidar_callback() and odometry_callback() functions 
+        # Initialize the cell occuopancy probabilites to 0
+        #Log(0.5/(1-0.5)) = 0
+        for i in range(self.width * self.height):
+            self.map_occ_grid_msg.data[i] = 0
+
+        # Subscribe to Lidar scan and odomery topics with corresponding lidar_callback() and odometry_callback() functions
         lidar_sub = rospy.Subscriber(lidarscan_topic, LaserScan, self.lidar_callback)
         odom_sub = rospy.Subscriber(odom_topic, Odometry, self.odom_callback)
 
         # Create a publisher for the Occupancy Grid Map
-        map_pub = rospy.Publisher("/map", OccupancyGrid, queue_size = 1)
+        map_pub = rospy.Publisher("/map", OccupancyGrid, queue_size=1)
 
-
-    # lidar_callback () uses the current LiDAR scan and Wheel Odometry data to uddate and publish the Grid Occupancy map 
+    # lidar_callback () uses the current LiDAR scan and Wheel Odometry data to uddate and publish the Grid Occupancy map
     def lidar_callback(self, data):
-        
+        #Create list of LIDAR angles
+        num_angles = len(data.ranges)
+        step_size = (data.angle_max - data.angle_min)/(num_angles - 1)
+        angles = [data.angle_min + i*step_size for i in range(num_angles)]
+
+        #assign values to cells in grid
+        for i in range(self.width):
+            for j in range(self.height):
+                #Get coordinates & angle from i, j
+                x = i*self.res
+                y = j*self.res
+                angle = math.atan2(y - self.y_base, x - self.x_base) - self.base_yaw
+
+                #Get distance to cell
+                cell_distance = math.sqrt((x - self.x_base)**2 + (y - self.y_base)**2)
+
+                #get closest LIDAR beam to cell and its associated distance
+                closest_measurement = min(enumerate(angles), key=lambda x: abs(x[1] - angle))[0]
+                measurement_distance = data.ranges[closest_measurement]
+
+                if cell_distance < measurement_distance:
+                    #cell is free
+                    self.map_occ_grid_msg.data[i*self.width + j] += math.log(self.pFree/(1-self.pFree))
+                elif abs(cell_distance - measurement_distance) < self.res:
+                    #cell is occupied
+                    self.map_occ_grid_msg.data[i*self.width + j] += math.log(self.pOcc/(1-self.pFree))
+                else:
+                    #cell is unknown
+                    #DO nothing & remove branch??
+
         # Publish to map topic
         self.map_occ_grid_msg.header.stamp = rospy.Time.now()
         self.map_pub.publish(self.map_occ_grid_msg)
 
-    # odom_callback() retrives the wheel odometry data from the publsihed odom_msg
-     
+    #Update vehicle position
     def odom_callback(self, odom_msg):
-        self.base_x = odom_msg.pose.pose.position.x
-        self.base_y = odom_msg.pose.pose.position.y
-        orientation_z = odom_msg.pose.pose.orientation.z #orienttion_z = sin(yaw/2)
-        self.base_yaw = 2.0*math.asin(orientation_z)
+        self.x_base = odom_msg.pose.pose.position.x
+        self.y_base = odom_msg.pose.pose.position.y
+        orientation_z = odom_msg.pose.pose.orientation.z
+        self.base_yaw = 2.0 * math.asin(orientation_z) #z = sin(yaw/2)
+
 
 def main(args):
     rospy.init_node("occupancygridmap", anonymous=True)
@@ -86,5 +114,6 @@ def main(args):
     rospy.sleep(0.1)
     rospy.spin()
 
-if __name__=='__main__':
-	main(sys.argv)
+
+if __name__ == '__main__':
+    main(sys.argv)
