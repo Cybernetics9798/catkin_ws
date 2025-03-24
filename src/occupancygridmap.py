@@ -115,16 +115,13 @@ class OccupancyGridMap:
         orientation_z = odom_msg.pose.pose.orientation.z
         self.base_yaw = 2.0 * math.asin(orientation_z) #z = sin(yaw/2)
 
-
-    
-
-    # def map_p(self, n):
-    #     if (n > self.pOcc):
-    #         return 100
-    #     elif (n < self.pFree):
-    #         return 0
-    #     else:
-    #         return -1
+    def map_p(self, n):
+        if (n > self.pOcc):
+            return 100
+        elif (n < self.pFree):
+            return 0
+        else:
+            return -1
 
 def main(args):
     rospy.init_node("occupancygridmap", anonymous=True)
