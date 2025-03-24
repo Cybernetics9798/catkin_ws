@@ -72,7 +72,7 @@ class OccupancyGridMap:
         #Create list of LIDAR angles
         num_angles = len(data.ranges)
         step_size = (data.angle_max - data.angle_min)/(num_angles - 1)
-        angles = [data.angle_min + i*step_size for i in range(num_angles)]
+        angles = np.array([data.angle_min + i*step_size for i in range(num_angles)])
 
         #assign values to cells in grid
         for i in range(self.width):
