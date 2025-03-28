@@ -144,16 +144,6 @@ map_height: 120
 map_res: 0.1 #m
 object_size: .05 #m
 
-#Lab 8 wall following parameters
-kp = 6.0
-kd = 4.0
-delta_max = 0.41
-v_ds = 2.0
-d_tau = 1.0
-bl_angle = 270
-br_angle = 90
-al_angle = 220
-ar_angle = 140
-delta_theta = 11.25
+
 
 
